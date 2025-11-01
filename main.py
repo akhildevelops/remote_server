@@ -70,7 +70,7 @@ def splill_todos(todos: List[dict]) -> dict:
 def main():
     client = Client(auth=os.environ["NOTION_KEY"])
     _logger.info("Registered Notion Client")
-    date = date_time(timedelta(days=1))
+    date = date_time(timedelta(days=0))
     children = client.data_sources.query(
         os.environ["NOTION_DATASOURCE_ID"],
         **{
@@ -107,7 +107,9 @@ def main():
                 "Date": {
                     "type": "date",
                     "date": {
-                        "start": datetime.now().strftime("%Y-%m-%d"),
+                        "start": (datetime.now() + timedelta(days=1)).strftime(
+                            "%Y-%m-%d"
+                        ),
                     },
                 },
             },
