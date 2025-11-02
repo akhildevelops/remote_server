@@ -5,7 +5,11 @@ from datetime import timedelta, datetime, UTC
 import logging
 import sys
 from typing import List
+import re
 
+re_pending_since = re.compile(
+    r"\(pending since (\d+) days?\)", flags=re.IGNORECASE | re.MULTILINE
+)
 logging.basicConfig(level=logging._nameToLevel[os.environ.get("LOGGING_LEVEL", "INFO")])
 _logger = logging.getLogger(__name__)
 
@@ -27,6 +31,17 @@ def get_latest_page(pages: List[dict]) -> dict:
     return new_pages[0]
 
 
+def increment_spillover_days(text: str) -> str:
+    match = re_pending_since.search(text)
+    _logger.info(f"{text}, {match}")
+    if not match:
+        return f"{text} (Pending since 1 day)"
+    upto = match.start()
+    _logger.debug(upto)
+    days = int(match.group(1))
+    return f"{text[:upto]} (Pending since {days + 1} days)"
+
+
 def splill_todos(todos: List[dict]) -> dict:
     eligible_todos = []
     for each_todo in todos:
@@ -43,6 +58,9 @@ def splill_todos(todos: List[dict]) -> dict:
                 f"Skipping, as the block: {each_todo['id']} - {each_todo['to_do']['rich_text'][0]['plain_text']} is either strikedoff or finished."
             )
             continue
+        text = increment_spillover_days(
+            each_todo["to_do"]["rich_text"][0]["plain_text"]
+        )
         eligible_todos.append(
             {
                 "object": "block",
@@ -52,11 +70,9 @@ def splill_todos(todos: List[dict]) -> dict:
                         {
                             "type": "text",
                             "text": {
-                                "content": each_todo["to_do"]["rich_text"][0][
-                                    "plain_text"
-                                ],
+                                "content": text,
                             },
-                            "plain_text": "Check pan card",
+                            "plain_text": text,
                         }
                     ],
                     "checked": False,
